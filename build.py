@@ -38,6 +38,30 @@ PHOTOS = [  # (path, alt/caption)
      "Theodore Walrond hiking with a backpack in the mountains"),
 ]
 
+# Theodore's other profiles. The old WordPress site linked to these; keeping the links preserves the
+# support they give the profiles that rank for his name.
+PROFILES = [
+    ("LinkedIn", "Work history and education", "https://www.linkedin.com/in/theodore-rex-walrond/"),
+    ("rexwalrond.com", "My main site, under the name Rex Walrond", "https://rexwalrond.com/"),
+    ("Field notes", "Trip reports, gear and music", "https://rexwalrond.github.io/RexWalrond/"),
+    ("Weebly", "Theodore Walrond on Weebly", "https://theodorewalrond.weebly.com/"),
+    ("Issuu", "Biography, research summary, dive notes and the Rainier climb", "https://issuu.com/theodorewalrond"),
+    ("Jimdo", "Theodore Walrond on Jimdo", "https://theodore-walrond.jimdosite.com/"),
+    ("Webflow", "Theodore Walrond on Webflow", "https://theodore-walrond.webflow.io/"),
+    ("Creator Spring", "Theodore Walrond's Spring page", "https://theodorewalrond.creator-spring.com/"),
+    ("about.me", "Theodore Walrond on about.me", "https://about.me/theodorewalrond"),
+    ("Muck Rack", "Theodore Walrond on Muck Rack", "https://muckrack.com/theodorewalrond"),
+    ("SpeakerHub", "Theodore Walrond on SpeakerHub", "https://speakerhub.com/speaker/theodore-walrond"),
+    ("Crunchbase", "Theodore Walrond on Crunchbase", "https://www.crunchbase.com/person/theodore-walrond"),
+    ("YouTube", "@theodorewalrond", "https://www.youtube.com/@theodorewalrond"),
+    ("SlideShare", "Theodore Walrond on SlideShare", "https://www.slideshare.net/theodorewalrond"),
+]
+
+
+def profile_links(items):
+    return "".join(f'<a href="{u}" rel="me"><b>{t}</b><span>{d}</span></a>' for t, d, u in items)
+
+
 PERSON = {
     "@context": "https://schema.org",
     "@type": "Person",
@@ -47,13 +71,7 @@ PERSON = {
     "image": BASE + HEADSHOT,
     "alumniOf": [{"@type": "CollegeOrUniversity", "name": "University of Florida"}],
     "knowsAbout": ["Cognitive neuroscience", "Scuba diving", "Mountaineering", "Consumer health"],
-    "sameAs": [
-        "https://www.linkedin.com/in/theodore-rex-walrond/",
-        "https://rexwalrond.com/",
-        "https://theodorewalrond.weebly.com/",
-        "https://rexwalrond.weebly.com/",
-        "https://rexwalrond.github.io/RexWalrond/",
-    ],
+    "sameAs": [u for _, _, u in PROFILES],
 }
 
 with open(os.path.join(SRC, "posts.json"), encoding="utf-8") as f:
@@ -258,6 +276,14 @@ def build():
 </section>
 
 <section class="sec" style="padding-top:0">
+  <div class="wrap">
+    <div class="kicker">Elsewhere online</div>
+    <h2 class="sec-title">Find Theodore Walrond elsewhere</h2>
+    <div class="elsewhere">{profile_links(PROFILES)}</div>
+  </div>
+</section>
+
+<section class="sec" style="padding-top:0">
   <div class="wrap"><div class="close"><h2>Want to compare notes on a trip, a dive or a study?</h2><div class="cta" style="margin-top:0"><a class="btn btn-solid" href="/contact/">Get in touch</a><a class="btn btn-line" href="https://www.linkedin.com/in/theodore-rex-walrond/">LinkedIn</a></div></div></div>
 </section>
 """
@@ -346,11 +372,7 @@ def build():
         f'<h2 style="font-size:28px;margin:36px 0 8px">{g}</h2><div class="press">'
         + "".join(f'<a href="{u}" rel="noopener"><b>{t}</b><span>{pub}</span></a>' for t, pub, u in items) + "</div>"
         for g, items in ARTICLES.items())
-    profiles = [("rexwalrond.com", "My main site, under the name Rex Walrond", "https://rexwalrond.com/"),
-                ("LinkedIn", "Work history and education", "https://www.linkedin.com/in/theodore-rex-walrond/"),
-                ("Field notes", "Trip reports, gear and music", "https://rexwalrond.github.io/RexWalrond/"),
-                ("Parkinson's community work", "Research and APDA support group", "https://rexwalrond.weebly.com/")]
-    prof = "".join(f'<a href="{u}"><b>{t}</b><span>{d}</span></a>' for t, d, u in profiles)
+    prof = profile_links(PROFILES)
     resources = f"""
 <div class="wrap narrow">
   <div class="page-head"><div class="kicker">Resources</div><h1>Theodore Walrond in the press</h1><p>Articles that have featured my research and time outdoors, plus the other places I keep things online.</p></div>

@@ -103,3 +103,8 @@ figcaption{font-size:14px;color:var(--ink-2);margin-top:10px}
   .close{padding:32px 24px}
   .nav{gap:14px}
 }
+.elsewhere{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.elsewhere a{display:block;background:#fff;border:1px solid var(--line);border-radius:6px;padding:14px 16px;text-decoration:none;color:var(--ink)}
+.elsewhere a:hover{border-color:var(--spruce)}
+.elsewhere b{display:block;font:400 18px "DM Serif Display",serif}
+.elsewhere span{font-size:13.5px;color:var(--ink-2)}
