@@ -10,6 +10,7 @@ used, so image URLs that Google already indexed keep working.
 import glob
 import json
 import os
+import re
 import shutil
 import sys
 
@@ -85,6 +86,16 @@ PERSON = {
     "knowsAbout": ["Cognitive neuroscience", "Scuba diving", "Mountaineering", "Consumer health"],
     "sameAs": [u for _, _, u in PROFILES],
 }
+
+T26 = UP + "2026/10/"
+TRIP_PHOTOS = [  # (path, alt/caption, width, height) real trip photos, GPS stripped
+    (T26 + "theodore-walrond-mount-rainier-snowfield.jpg", "Theodore Walrond on Mount Rainier, July 2020", 1200, 1600),
+    (T26 + "theodore-walrond-four-pass-loop-maroon-bells.jpg", "Theodore Walrond on the Four Pass Loop, Colorado, 2019", 1200, 1600),
+    (T26 + "theodore-walrond-teton-crest-trail.jpg", "Theodore Walrond on the Teton Crest Trail, Wyoming, 2022", 1600, 1200),
+    (T26 + "theodore-walrond-glacier-national-park-bowman-lake.jpg", "Theodore Walrond at Bowman Lake, Glacier National Park, 2023", 1600, 1200),
+    (T26 + "theodore-walrond-divemaster-florida-spring.jpg", "Theodore Walrond diving a Florida spring", 1600, 1200),
+    (T26 + "theodore-walrond-skiing-telluride.jpg", "Theodore Walrond skiing in Telluride, Colorado", 739, 1162),
+]
 
 with open(os.path.join(SRC, "posts.json"), encoding="utf-8") as f:
     POSTS = sorted(json.load(f), key=lambda p: p["date"], reverse=True)
@@ -343,12 +354,14 @@ def build():
 
     # ---------------- Portfolio (photos)
     figs = "".join(f'<figure><img src="{src}" alt="{alt}" loading="lazy" width="819" height="1024"><figcaption>{alt}.</figcaption></figure>' for src, alt in PHOTOS)
+    figs += "".join(f'<figure><img src="{src}" alt="{alt}" loading="lazy" width="{w}" height="{h}"><figcaption>{alt}.</figcaption></figure>' for src, alt, w, h in TRIP_PHOTOS)
     gallery_ld = {"@context": "https://schema.org", "@type": "ImageGallery", "name": "Photos of Theodore Walrond",
                   "about": {"@type": "Person", "name": "Theodore Walrond"},
-                  "image": [{"@type": "ImageObject", "contentUrl": BASE + src, "caption": alt} for src, alt in PHOTOS]}
+                  "image": [{"@type": "ImageObject", "contentUrl": BASE + src, "caption": alt} for src, alt in PHOTOS]
+                           + [{"@type": "ImageObject", "contentUrl": BASE + src, "caption": alt} for src, alt, _, _ in TRIP_PHOTOS]}
     portfolio = f"""
 <div class="wrap">
-  <div class="page-head narrow"><div class="kicker">Portfolio</div><h1>Photos of Theodore Walrond</h1><p>Recent headshots and one from the trail. For my research and service work, see <a href="https://rexwalrond.com/portfolio/">rexwalrond.com</a>; for trip reports, see my <a href="https://rexwalrond.github.io/RexWalrond/trips.html">field notes</a>.</p></div>
+  <div class="page-head narrow"><div class="kicker">Portfolio</div><h1>Photos of Theodore Walrond</h1><p>Recent headshots and photos from the trail and the water. For my research and service work, see <a href="https://rexwalrond.com/portfolio/">rexwalrond.com</a>; for trip reports, see my <a href="https://rexwalrond.github.io/RexWalrond/trips.html">field notes</a>.</p></div>
   <div class="gallery">{figs}</div>
 </div>
 <div style="height:88px"></div>
@@ -358,17 +371,20 @@ def build():
 
     # ---------------- Blog index + posts
     page("blog/", "Blog | Theodore Walrond",
-         "Guides by Theodore Walrond on mountaineering, backpacking, hiking, skiing, scuba diving and academic research.",
-         f'<div class="wrap narrow"><div class="page-head"><div class="kicker">Blog</div><h1>Writing</h1><p>Guides on getting outside, diving and research.</p></div><div class="rows">{"".join(row(p) for p in POSTS)}</div></div><div style="height:88px"></div>',
+         "Trip reports and notes by Theodore Walrond: Mount Rainier, the Teton Crest Trail, Glacier National Park, Florida springs diving and research.",
+         f'<div class="wrap narrow"><div class="page-head"><div class="kicker">Blog</div><h1>Writing</h1><p>Trip reports, dive notes and research.</p></div><div class="rows">{"".join(row(p) for p in POSTS)}</div></div><div style="height:88px"></div>',
          "Blog")
     for p in POSTS:
         img = display_variant(p["image"]) if p["image"] else None
-        alt = POST_ALT.get(p["slug"], p["title"])
-        fig = f'<figure><img src="{img}" alt="{alt}"></figure>' if img else ""
+        alt = p.get("alt") or POST_ALT.get(p["slug"], p["title"])
+        cap = f'<figcaption>{p["caption"]}</figcaption>' if p.get("caption") else ""
+        fig = f'<figure><img src="{img}" alt="{alt}">{cap}</figure>' if img else ""
         art = {"@context": "https://schema.org", "@type": "BlogPosting", "headline": p["title"], "datePublished": p["date"],
                "author": {"@type": "Person", "name": "Theodore Walrond", "url": BASE + "/"}, "mainEntityOfPage": f"{BASE}/{p['slug']}/"}
+        if p.get("modified"):
+            art["dateModified"] = p["modified"]
         if img:
-            art["image"] = BASE + img
+            art["image"] = {"@type": "ImageObject", "url": BASE + img, "caption": alt}
         from datetime import date
         d = date.fromisoformat(p["date"]).strftime("%B %-d, %Y")
         body = (f'<div class="wrap narrow"><div class="page-head"><div class="kicker">{p["tag"]} &#183; {d}</div><h1>{p["title"]}</h1>'
@@ -418,8 +434,12 @@ def build():
     with open(os.path.join(OUT, "sitemap.xml"), "w") as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n')
         for u in urls:
-            imgs = "".join(f"<image:image><image:loc>{BASE}{src}</image:loc></image:image>" for src, _ in PHOTOS) if u == "portfolio/" else ""
-            f.write(f"  <url><loc>{BASE}/{u}</loc><lastmod>2026-10-15</lastmod>{imgs}</url>\n")
+            imgs = "".join(f"<image:image><image:loc>{BASE}{src}</image:loc></image:image>" for src, *_ in PHOTOS + TRIP_PHOTOS) if u == "portfolio/" else ""
+            post = next((p for p in POSTS if p["slug"] + "/" == u), None)
+            if post and post["image"]:
+                imgs += "".join(f"<image:image><image:loc>{BASE}/{s}</image:loc></image:image>" for s in [post["image"]] + re.findall(r'src="/(wp-content/[^"]+)"', post["html"]))
+            mod = (post or {}).get("modified") or ("2026-10-17" if u in ("", "about/", "resources/", "blog/") else "2026-10-15")
+            f.write(f"  <url><loc>{BASE}/{u}</loc><lastmod>{mod}</lastmod>{imgs}</url>\n")
         f.write("</urlset>\n")
     with open(os.path.join(OUT, "robots.txt"), "w") as f:
         f.write(f"User-agent: *\nAllow: /\nSitemap: {BASE}/sitemap.xml\n" if LIVE else "User-agent: *\nDisallow: /\n")
