@@ -414,6 +414,9 @@ def build():
     if LIVE:
         with open(os.path.join(OUT, "CNAME"), "w") as f:
             f.write("theodorewalrond.com\n")
+        # Google Search Console ownership file (keep it, or the property loses verification).
+        with open(os.path.join(OUT, "google489e379d499b3d8e.html"), "w") as f:
+            f.write("google-site-verification: google489e379d499b3d8e.html")
     open(os.path.join(OUT, ".nojekyll"), "w").close()
     print("built", "LIVE" if LIVE else "PREVIEW", "->", OUT, f"({len(POSTS)} posts, {len(REDIRECTS)} redirects)")
 
