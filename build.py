@@ -51,10 +51,10 @@ PROFILES = [
     ("Creator Spring", "Theodore Walrond's Spring page", "https://theodorewalrond.creator-spring.com/"),
     ("about.me", "Theodore Walrond on about.me", "https://about.me/theodorewalrond"),
     ("Muck Rack", "Theodore Walrond on Muck Rack", "https://muckrack.com/theodorewalrond"),
-    ("SpeakerHub", "Theodore Walrond on SpeakerHub", "https://speakerhub.com/speaker/theodore-walrond"),
+    ("Sessionize", "Speaker profile: research, diving and the mountains", "https://sessionize.com/theodorewalrond"),
     ("Crunchbase", "Theodore Walrond on Crunchbase", "https://www.crunchbase.com/person/theodore-walrond"),
     ("YouTube", "@theodorewalrond", "https://www.youtube.com/@theodorewalrond"),
-    ("SlideShare", "Theodore Walrond on SlideShare", "https://www.slideshare.net/theodorewalrond"),
+    ("Strikingly", "Trip log: Rainier, the Tetons, Glacier and the High Sierra", "https://theodorewalrond.mystrikingly.com/"),
 ]
 
 
@@ -300,7 +300,7 @@ def build():
 </section>
 """
     page("", "Theodore Walrond | Neuroscience, Diving &amp; Mountains | Tampa Bay, FL",
-         "Theodore Walrond (Rex) is a University of Florida neuroscience graduate, SDI Divemaster and mountaineer from the Tampa Bay area, now building an early-stage venture in consumer health.",
+         "Theodore Walrond (Rex) is a University of Florida neuroscience graduate, SDI Divemaster and mountaineer from the Tampa Bay area, starting a consumer health company.",
          home, "Home", jsonld(PERSON))
 
     # ---------------- About
@@ -338,7 +338,7 @@ def build():
 <div style="height:72px"></div>
 """
     page("about/", "About Theodore Walrond | UF Neuroscience, Diving &amp; Mountaineering",
-         "About Theodore Walrond: St. Petersburg, Florida, UF neuroscience graduate, former McKnight Brain Institute and Romark researcher, SDI Divemaster, Mount Rainier climber and APDA volunteer.",
+         "About Theodore Walrond: St. Petersburg, FL neuroscience graduate (UF), former McKnight Brain Institute researcher, SDI Divemaster and Mount Rainier climber.",
          about, "About", jsonld(PERSON), image=PHOTOS[1][0])
 
     # ---------------- Portfolio (photos)
