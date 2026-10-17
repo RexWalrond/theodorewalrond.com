@@ -58,6 +58,16 @@ PROFILES = [
 ]
 
 
+# Issuu publications, linked one by one so each document gets a direct link.
+PUBLICATIONS = [
+    ('Biography of Theodore Walrond', 'Background, research, diving and the mountains', 'https://issuu.com/theodorewalrond/docs/biography_of_theodore_walrond'),
+    ('Research Experience in Neuroscience and Drug Development', 'McKnight Brain Institute and Romark Laboratories', 'https://issuu.com/theodorewalrond/docs/the_journey_of_an_aspiring_scientist_from_classro'),
+    ("A Divemaster's Notes on Florida Springs and Teaching Scuba", 'UF Scientific Diving Program, 2020-2023', 'https://issuu.com/theodorewalrond/docs/leadership_beneath_the_surface_how_scuba_diving_s'),
+    ('Backcountry Log: Six Trips Above Treeline', 'From the Four Pass Loop to the High Sierra, 2019-2025', 'https://issuu.com/theodorewalrond/docs/exploring_the_wilderness_essential_tips_for_succe'),
+    ('Climbing Mount Rainier', 'A guided summit with International Mountain Guides, 2020', 'https://issuu.com/theodorewalrond/docs/reaching_new_heights_the_adventure_of_mountain_cl'),
+]
+
+
 def profile_links(items):
     return "".join(f'<a href="{u}" rel="me"><b>{t}</b><span>{d}</span></a>' for t, d, u in items)
 
@@ -380,6 +390,8 @@ def build():
 <div class="wrap narrow">
   <div class="page-head"><div class="kicker">Resources</div><h1>Theodore Walrond in the press</h1><p>Articles that have featured my research and time outdoors, plus the other places I keep things online.</p></div>
   {groups}
+  <h2 style="font-size:28px;margin:44px 0 8px">Publications on Issuu</h2>
+  <div class="press">{profile_links(PUBLICATIONS)}</div>
   <h2 style="font-size:28px;margin:44px 0 8px">Elsewhere online</h2>
   <div class="press">{prof}</div>
 </div>
