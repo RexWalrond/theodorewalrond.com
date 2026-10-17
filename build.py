@@ -69,7 +69,9 @@ PERSON = {
     "alternateName": ["Theodore Rex Walrond", "Rex Walrond"],
     "url": BASE + "/",
     "image": BASE + HEADSHOT,
-    "alumniOf": [{"@type": "CollegeOrUniversity", "name": "University of Florida"}],
+    "alumniOf": [{"@type": "CollegeOrUniversity", "name": "University of Florida", "alternateName": "UF", "sameAs": "https://www.ufl.edu/"}],
+    "homeLocation": {"@type": "Place", "name": "St. Petersburg, Florida",
+                     "address": {"@type": "PostalAddress", "addressLocality": "St. Petersburg", "addressRegion": "FL", "addressCountry": "US"}},
     "knowsAbout": ["Cognitive neuroscience", "Scuba diving", "Mountaineering", "Consumer health"],
     "sameAs": [u for _, _, u in PROFILES],
 }
@@ -230,7 +232,7 @@ def build():
       <div class="kicker">Neuroscience &#183; Diving &#183; Mountains</div>
       <h1>Theodore Walrond</h1>
       <p class="aka">Most people call me Rex.</p>
-      <p class="lede">I trained in behavioral and cognitive neuroscience at the University of Florida, spent my spare time teaching people to breathe underwater, and save my time off for high mountain passes. Today I'm building an early-stage company in consumer health.</p>
+      <p class="lede">I trained in behavioral and cognitive neuroscience at the University of Florida, spent my spare time teaching people to breathe underwater, and save my time off for high mountain passes. These days I live in St. Petersburg, Florida, on Tampa Bay, where I'm building an early-stage company in consumer health.</p>
       <div class="cta"><a class="btn btn-solid" href="/about/">About me</a><a class="btn btn-line" href="/portfolio/">Photos</a></div>
     </div>
   </div>
@@ -287,8 +289,8 @@ def build():
   <div class="wrap"><div class="close"><h2>Want to compare notes on a trip, a dive or a study?</h2><div class="cta" style="margin-top:0"><a class="btn btn-solid" href="/contact/">Get in touch</a><a class="btn btn-line" href="https://www.linkedin.com/in/theodore-rex-walrond/">LinkedIn</a></div></div></div>
 </section>
 """
-    page("", "Theodore Walrond | Neuroscience, Diving &amp; the Mountains",
-         "Theodore Walrond (Rex) is a University of Florida neuroscience graduate, SDI Divemaster and mountaineer now building an early-stage venture in consumer health.",
+    page("", "Theodore Walrond | Neuroscience, Diving &amp; Mountains | Tampa Bay, FL",
+         "Theodore Walrond (Rex) is a University of Florida neuroscience graduate, SDI Divemaster and mountaineer from the Tampa Bay area, now building an early-stage venture in consumer health.",
          home, "Home", jsonld(PERSON))
 
     # ---------------- About
@@ -301,6 +303,7 @@ def build():
     <div class="facts">
       <div><b>Education</b>B.S. in Psychology (Behavioral and Cognitive Neuroscience), University of Florida, cum laude</div>
       <div><b>Graduate study</b>Completed graduate coursework in finance, University of Notre Dame</div>
+      <div><b>Based in</b>St. Petersburg, Florida, on Tampa Bay</div>
       <div><b>Diving</b>SDI Divemaster, Master Scuba Diver, Rescue Diver, Nitrox</div>
       <div><b>Highest summit</b>Mount Rainier, 14,411 ft</div>
     </div>
@@ -324,8 +327,8 @@ def build():
 </div>
 <div style="height:72px"></div>
 """
-    page("about/", "About Theodore Walrond | Research, Diving &amp; Mountaineering",
-         "About Theodore Walrond: UF neuroscience graduate, former McKnight Brain Institute and Romark researcher, SDI Divemaster, Mount Rainier climber and APDA volunteer.",
+    page("about/", "About Theodore Walrond | UF Neuroscience, Diving &amp; Mountaineering",
+         "About Theodore Walrond: St. Petersburg, Florida, UF neuroscience graduate, former McKnight Brain Institute and Romark researcher, SDI Divemaster, Mount Rainier climber and APDA volunteer.",
          about, "About", jsonld(PERSON), image=PHOTOS[1][0])
 
     # ---------------- Portfolio (photos)
