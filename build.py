@@ -8,10 +8,12 @@ Photos live in src/wp-content/uploads at the same paths the old WordPress site
 used, so image URLs that Google already indexed keep working.
 """
 import glob
+import html as htmllib
 import json
 import os
 import re
 import shutil
+import struct
 import sys
 
 LIVE = "--live" in sys.argv
@@ -20,6 +22,29 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "src")
 OUT = os.path.join(HERE, "docs")
 UP = "/wp-content/uploads/"
+UPDATED = "2026-10-27"  # last site-wide change; used for sitemap lastmod and dateModified
+
+
+def jpeg_size(path):
+    """(width, height) of a JPEG, read from its SOF header."""
+    with open(path, "rb") as f:
+        d = f.read()
+    i = 2
+    while i + 9 < len(d):
+        if d[i] != 0xFF:
+            i += 1
+            continue
+        if d[i + 1] in (0xC0, 0xC1, 0xC2):
+            h, w = struct.unpack(">HH", d[i + 5:i + 9])
+            return w, h
+        i += 2 + struct.unpack(">H", d[i + 2:i + 4])[0]
+    return None
+
+
+def local_size(src):
+    """Pixel size of a site image given its URL path (e.g. /wp-content/uploads/...)."""
+    path = os.path.join(SRC, src.lstrip("/"))
+    return jpeg_size(path) if os.path.exists(path) else None
 
 NAV = [("Home", "/"), ("About", "/about/"), ("Blog", "/blog/"), ("Portfolio", "/portfolio/"),
        ("Resources", "/resources/"), ("Contact", "/contact/")]
@@ -79,7 +104,7 @@ PERSON = {
     "name": "Theodore Walrond",
     "alternateName": ["Theodore Rex Walrond", "Rex Walrond"],
     "url": BASE + "/",
-    "image": BASE + HEADSHOT,
+    "image": {"@type": "ImageObject", "url": BASE + HEADSHOT, "caption": "Theodore Walrond", "width": 819, "height": 1024},
     "alumniOf": [{"@type": "CollegeOrUniversity", "name": "University of Florida", "alternateName": "UF", "sameAs": "https://www.ufl.edu/"}],
     "homeLocation": {"@type": "Place", "name": "St. Petersburg, Florida",
                      "address": {"@type": "PostalAddress", "addressLocality": "St. Petersburg", "addressRegion": "FL", "addressCountry": "US"}},
@@ -88,13 +113,15 @@ PERSON = {
 }
 
 T26 = UP + "2026/10/"
-TRIP_PHOTOS = [  # (path, alt/caption, width, height) real trip photos, GPS stripped
-    (T26 + "theodore-walrond-mount-rainier-snowfield.jpg", "Theodore Walrond on Mount Rainier, July 2020", 1200, 1600),
-    (T26 + "theodore-walrond-four-pass-loop-maroon-bells.jpg", "Theodore Walrond on the Four Pass Loop, Colorado, 2019", 1200, 1600),
-    (T26 + "theodore-walrond-teton-crest-trail.jpg", "Theodore Walrond on the Teton Crest Trail, Wyoming, 2022", 1600, 1200),
-    (T26 + "theodore-walrond-glacier-national-park-bowman-lake.jpg", "Theodore Walrond at Bowman Lake, Glacier National Park, 2023", 1600, 1200),
-    (T26 + "theodore-walrond-divemaster-florida-spring.jpg", "Theodore Walrond diving a Florida spring", 1600, 1200),
-    (T26 + "theodore-walrond-skiing-telluride.jpg", "Theodore Walrond skiing in Telluride, Colorado", 739, 1162),
+TRIP_PHOTOS = [  # (path, alt/caption, width, height) real trip photos, GPS stripped; sizes read from the files
+    (src, alt) + local_size(src) for src, alt in [
+        (T26 + "theodore-walrond-mount-rainier-snowfield.jpg", "Theodore Walrond on Mount Rainier, July 2020"),
+        (T26 + "theodore-walrond-four-pass-loop-maroon-bells.jpg", "Theodore Walrond on the Four Pass Loop, Colorado, 2019"),
+        (T26 + "theodore-walrond-teton-crest-trail.jpg", "Theodore Walrond on the Teton Crest Trail, Wyoming, 2022"),
+        (T26 + "theodore-walrond-glacier-national-park-bowman-lake.jpg", "Theodore Walrond at Bowman Lake, Glacier National Park, 2023"),
+        (T26 + "theodore-walrond-divemaster-florida-spring.jpg", "Theodore Walrond diving a Florida spring"),
+        (T26 + "theodore-walrond-skiing-telluride.jpg", "Theodore Walrond skiing in Telluride, Colorado"),
+    ]
 ]
 
 with open(os.path.join(SRC, "posts.json"), encoding="utf-8") as f:
@@ -122,6 +149,8 @@ for s in ["scuba-diving-and-leadership-lessons-from-the-depths-on-effective-lead
           "organizing-and-leading-dives-what-scuba-diving-taught-me-about-effective-leadership",
           "mastering-technical-scuba-plan-skill-respect-repeat"]:
     REDIRECTS[s + "/"] = "/beneath-the-surface-building-stronger-leaders-and-teams-through-scuba-diving/"
+for n in range(2, 7):  # WordPress blog pagination
+    REDIRECTS[f"blog/page/{n}/"] = "/blog/"
 for s in ["the-journey-of-an-aspiring-scientist-from-classroom-to-research-lab", "the-unseen-impact-of-academic-research-on-society",
           "tackling-tough-stem-labs-tips-for-excelling", "charting-the-path-an-aspiring-scientists-journey-from-classroom-to-research-lab",
           "from-research-to-reality-how-academic-exploration-prepares-you-for-professional-success",
@@ -169,6 +198,41 @@ def jsonld(obj):
     return '<script type="application/ld+json">' + json.dumps(obj) + "</script>\n"
 
 
+WEBSITE = {"@context": "https://schema.org", "@type": "WebSite", "name": "Theodore Walrond", "alternateName": "theodorewalrond.com", "url": BASE + "/"}
+PROFILE_PAGE = {"@context": "https://schema.org", "@type": "ProfilePage", "url": BASE + "/about/", "dateModified": UPDATED,
+                "mainEntity": {k: v for k, v in PERSON.items() if k != "@context"}}
+
+
+def crumbs(*items):
+    """BreadcrumbList JSON-LD; items are (name, path) pairs after Home."""
+    trail = [("Home", "")] + list(items)
+    return jsonld({"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
+        {"@type": "ListItem", "position": i + 1, "name": n, "item": BASE + "/" + p} for i, (n, p) in enumerate(trail)]})
+
+
+def finish_imgs(body):
+    """Give every <img> its real width/height (no layout shift), load the first image eagerly with high
+    priority (it's the largest above-the-fold image) and lazy-load the rest."""
+    seen = [False]
+
+    def fix(m):
+        tag = m.group(0)
+        if "width=" not in tag:
+            size = local_size(re.search(r'src="([^"]+)"', tag).group(1))
+            if size:
+                tag = tag[:-1] + f' width="{size[0]}" height="{size[1]}">'
+        if not seen[0]:
+            seen[0] = True
+            if "loading=" not in tag:
+                tag = tag[:-1] + ' fetchpriority="high">'
+        elif "loading=" not in tag:
+            tag = tag[:-1] + ' loading="lazy">'
+        if "decoding=" not in tag:
+            tag = tag[:-1] + ' decoding="async">'
+        return tag
+    return re.sub(r"<img\b[^>]*>", fix, body)
+
+
 def write(path, html):
     dest = os.path.join(OUT, path, "index.html") if path.endswith("/") or path == "" else os.path.join(OUT, path)
     os.makedirs(os.path.dirname(dest), exist_ok=True)
@@ -177,7 +241,11 @@ def write(path, html):
 
 
 def page(path, title, description, body, current=None, extra_head="", image=HEADSHOT):
-    nav = "".join(f'<a href="{href}"{" aria-current=page" if label == current else ""}>{label}</a>' for label, href in NAV)
+    t, d = htmllib.unescape(title), htmllib.unescape(description)
+    if path not in ("404.html", "privacy-policy/") and not (30 <= len(t) <= 65 and 120 <= len(d) <= 160):
+        print(f"  ! check lengths on /{path}: title {len(t)}, description {len(d)}")
+    body = finish_imgs(body)
+    nav ="".join(f'<a href="{href}"{" aria-current=page" if label == current else ""}>{label}</a>' for label, href in NAV)
     robots = "" if LIVE else '<meta name="robots" content="noindex,nofollow">\n'
     canonical = BASE + "/" + path
     write(path, f"""<!doctype html>
@@ -310,9 +378,9 @@ def build():
   <div class="wrap"><div class="close"><h2>Want to compare notes on a trip, a dive or a study?</h2><div class="cta" style="margin-top:0"><a class="btn btn-solid" href="/contact/">Get in touch</a><a class="btn btn-line" href="https://www.linkedin.com/in/theodore-rex-walrond/">LinkedIn</a></div></div></div>
 </section>
 """
-    page("", "Theodore Walrond | Neuroscience, Diving &amp; Mountains | Tampa Bay, FL",
-         "Theodore Walrond (Rex) is a University of Florida neuroscience graduate, SDI Divemaster and mountaineer from the Tampa Bay area, starting a consumer health company.",
-         home, "Home", jsonld(PERSON))
+    page("", "Theodore Walrond | Neuroscience, Diving &amp; Mountains, Tampa Bay",
+         "Theodore Walrond (Rex): University of Florida neuroscience graduate, SDI Divemaster and mountaineer in Tampa Bay, now starting a consumer health company.",
+         home, "Home", jsonld(PERSON) + jsonld(WEBSITE))
 
     # ---------------- About
     about = f"""
@@ -350,7 +418,7 @@ def build():
 """
     page("about/", "About Theodore Walrond | UF Neuroscience, Diving &amp; Mountaineering",
          "About Theodore Walrond: St. Petersburg, FL neuroscience graduate (UF), former McKnight Brain Institute researcher, SDI Divemaster and Mount Rainier climber.",
-         about, "About", jsonld(PERSON), image=PHOTOS[1][0])
+         about, "About", jsonld(PROFILE_PAGE) + crumbs(("About", "about/")), image=PHOTOS[1][0])
 
     # ---------------- Portfolio (photos)
     figs = "".join(f'<figure><img src="{src}" alt="{alt}" loading="lazy" width="819" height="1024"><figcaption>{alt}.</figcaption></figure>' for src, alt in PHOTOS)
@@ -366,14 +434,19 @@ def build():
 </div>
 <div style="height:88px"></div>
 """
-    page("portfolio/", "Photos of Theodore Walrond | Portfolio",
-         "Headshots and outdoor photos of Theodore Walrond.", portfolio, "Portfolio", jsonld(gallery_ld))
+    page("portfolio/", "Photos of Theodore Walrond: Headshots, Trails and Diving",
+         "Photos of Theodore Walrond: recent headshots, plus Mount Rainier, the Four Pass Loop, the Teton Crest Trail, Glacier National Park and a Florida spring.",
+         portfolio, "Portfolio", jsonld(gallery_ld) + crumbs(("Portfolio", "portfolio/")))
 
     # ---------------- Blog index + posts
-    page("blog/", "Blog | Theodore Walrond",
+    blog_intro = ("<p>Trip reports, dive notes and research. Each trip post covers one route I've actually done, from the guided "
+                  "Mount Rainier climb in 2020 to Glacier National Park in 2023, with the mileage, the hard parts and what I'd do "
+                  "differently. The dive post is about three years with UF's Scientific Diving Program, and the research posts are "
+                  'plain-language takes on the questions I worked on. Shorter notes are in my <a href="https://rexwalrond.github.io/RexWalrond/trips.html">field notes</a>.</p>')
+    page("blog/", "Theodore Walrond's Blog: Trip Reports, Dives and Research",
          "Trip reports and notes by Theodore Walrond: Mount Rainier, the Teton Crest Trail, Glacier National Park, Florida springs diving and research.",
-         f'<div class="wrap narrow"><div class="page-head"><div class="kicker">Blog</div><h1>Writing</h1><p>Trip reports, dive notes and research.</p></div><div class="rows">{"".join(row(p) for p in POSTS)}</div></div><div style="height:88px"></div>',
-         "Blog")
+         f'<div class="wrap narrow"><div class="page-head"><div class="kicker">Blog</div><h1>Writing</h1>{blog_intro}</div><div class="rows">{"".join(row(p) for p in POSTS)}</div></div><div style="height:88px"></div>',
+         "Blog", crumbs(("Blog", "blog/")))
     for p in POSTS:
         img = display_variant(p["image"]) if p["image"] else None
         alt = p.get("alt") or POST_ALT.get(p["slug"], p["title"])
@@ -385,6 +458,8 @@ def build():
             art["dateModified"] = p["modified"]
         if img:
             art["image"] = {"@type": "ImageObject", "url": BASE + img, "caption": alt}
+            if local_size(img):
+                art["image"]["width"], art["image"]["height"] = local_size(img)
         from datetime import date
         d = date.fromisoformat(p["date"]).strftime("%B %-d, %Y")
         body = (f'<div class="wrap narrow"><div class="page-head"><div class="kicker">{p["tag"]} &#183; {d}</div><h1>{p["title"]}</h1>'
@@ -394,7 +469,8 @@ def build():
         desc = p["description"] or p["title"]
         if len(desc) > 160:
             desc = desc[:157].rsplit(" ", 1)[0] + "..."
-        page(p["slug"] + "/", f"{esc(title)} | Theodore Walrond", desc, body, "Blog", jsonld(art), image=img or HEADSHOT)
+        page(p["slug"] + "/", f"{esc(title)} | Theodore Walrond", desc, body, "Blog",
+             jsonld(art) + crumbs(("Blog", "blog/"), (p["title"], p["slug"] + "/")), image=img or HEADSHOT)
 
     # ---------------- Resources
     groups = "".join(
@@ -413,13 +489,18 @@ def build():
 </div>
 <div style="height:88px"></div>
 """
-    page("resources/", "Theodore Walrond in the Press | Resources",
-         "Articles featuring Theodore Walrond's research and outdoor pursuits, and links to his other sites and profiles.", resources, "Resources")
+    page("resources/", "Theodore Walrond in the Press: Articles and Profiles",
+         "Articles featuring Theodore Walrond's research and outdoor pursuits, his Issuu publications, and links to his other sites and profiles online.",
+         resources, "Resources", crumbs(("Resources", "resources/")))
 
     # ---------------- Contact, privacy, 404
-    page("contact/", "Contact Theodore Walrond", "How to reach Theodore Walrond: email or LinkedIn.",
-         '<div class="wrap narrow"><div class="page-head"><div class="kicker">Contact</div><h1>Contact Theodore Walrond</h1><p>Email is the fastest way to reach me. LinkedIn works too.</p></div><div class="cta"><a class="btn btn-solid" href="mailto:rexwalrond@gmail.com">Email me</a><a class="btn btn-line" href="https://www.linkedin.com/in/theodore-rex-walrond/">LinkedIn</a></div></div><div style="height:120px"></div>',
-         "Contact")
+    page("contact/", "Contact Theodore Walrond | Tampa Bay, Florida",
+         "How to reach Theodore Walrond (Rex), a University of Florida neuroscience graduate and SDI Divemaster in St. Petersburg, Florida: email or LinkedIn.",
+         '<div class="wrap narrow"><div class="page-head"><div class="kicker">Contact</div><h1>Contact Theodore Walrond</h1><p>Email is the fastest way to reach me. LinkedIn works too.</p>'
+         '<p>Write if you are planning one of the routes I have written about, want a Florida spring recommendation, or are working on brain health research or Parkinson&#8217;s support. I live in St. Petersburg, on Tampa Bay.</p></div>'
+         '<div class="cta"><a class="btn btn-solid" href="mailto:rexwalrond@gmail.com">Email me</a><a class="btn btn-line" href="https://www.linkedin.com/in/theodore-rex-walrond/">LinkedIn</a></div>'
+         f'<h2 style="font-size:28px;margin:44px 0 8px">Elsewhere</h2><div class="press">{profile_links(PROFILES[:6])}</div></div><div style="height:88px"></div>',
+         "Contact", crumbs(("Contact", "contact/")))
     page("privacy-policy/", "Privacy Policy | Theodore Walrond", "Privacy policy for theodorewalrond.com.",
          '<div class="wrap narrow"><div class="page-head"><div class="kicker">Privacy</div><h1>Privacy policy</h1></div><div class="prose"><p>This site has no forms, accounts, analytics or advertising, and it does not set cookies. Pages load fonts from Google Fonts, which receives standard request information such as your IP address. If you email me, I use your message only to reply.</p></div></div><div style="height:120px"></div>')
     page("404.html", "Page not found | Theodore Walrond", "This page doesn't exist.",
@@ -431,6 +512,11 @@ def build():
 
     # ---------------- robots, sitemap, CNAME
     urls = ["", "about/", "blog/", "portfolio/", "resources/", "contact/"] + [p["slug"] + "/" for p in POSTS]
+    # NetReputation's old WordPress sitemap index is still registered in Search Console and lists ~40 retired
+    # URLs. Serving our sitemap at that address stops the "Page with redirect" warnings for sitemap URLs.
+    with open(os.path.join(OUT, "sitemap_index.xml"), "w") as f:
+        f.write('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+                f"  <sitemap><loc>{BASE}/sitemap.xml</loc><lastmod>{UPDATED}</lastmod></sitemap>\n</sitemapindex>\n")
     with open(os.path.join(OUT, "sitemap.xml"), "w") as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n')
         for u in urls:
@@ -438,7 +524,7 @@ def build():
             post = next((p for p in POSTS if p["slug"] + "/" == u), None)
             if post and post["image"]:
                 imgs += "".join(f"<image:image><image:loc>{BASE}/{s}</image:loc></image:image>" for s in [post["image"]] + re.findall(r'src="/(wp-content/[^"]+)"', post["html"]))
-            mod = (post or {}).get("modified") or ("2026-10-17" if u in ("", "about/", "resources/", "blog/") else "2026-10-15")
+            mod = UPDATED
             f.write(f"  <url><loc>{BASE}/{u}</loc><lastmod>{mod}</lastmod>{imgs}</url>\n")
         f.write("</urlset>\n")
     with open(os.path.join(OUT, "robots.txt"), "w") as f:
